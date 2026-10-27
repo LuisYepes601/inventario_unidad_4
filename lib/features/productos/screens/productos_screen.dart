@@ -5,6 +5,9 @@ import '../services/producto_service.dart';
 import 'producto_form_screen.dart';
 import '../../categorias/screens/categorias_screen.dart';
 import '../../marcas/screens/marcas_screen.dart';
+import '../../../config//screens/configuraciones_screen.dart';
+import '../../reportes/services/pdf_export_service.dart';
+import '../../../config/theme_provider.dart';
 
 class ProductosScreen extends StatefulWidget {
   const ProductosScreen({super.key});
@@ -28,6 +31,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
   static const slateDark = Color(0xFF0F172A);
   static const slateMuted = Color(0xFF64748B);
   static const borderLight = Color(0xFFE2E8F0);
+  static const accentMint = Color(0xFF6EE7B7);
 
   @override
   void initState() {
@@ -78,16 +82,34 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
 
   void _eliminarProducto(String id) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('¿Eliminar producto?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        content: const Text('Esta acción quitará el producto del inventario permanentemente.', style: TextStyle(color: slateMuted)),
+        title: Text(
+          '¿Eliminar producto?',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: isDark ? Colors.white : slateDark,
+          ),
+        ),
+        content: Text(
+          'Esta acción quitará el producto del inventario permanentemente.',
+          style: TextStyle(color: isDark ? const Color(0xFF94A3B8) : slateMuted),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar', style: TextStyle(color: slateMuted, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Cancelar',
+              style: TextStyle(
+                color: isDark ? const Color(0xFF94A3B8) : slateMuted,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -124,18 +146,58 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final scaffoldBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
+    final primaryText = isDark ? Colors.white : slateDark;
+    final mutedText = isDark ? const Color(0xFF94A3B8) : slateMuted;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
         title: const Text(
           'Inventario',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19, letterSpacing: 0.3),
         ),
         centerTitle: true,
-        backgroundColor: darkForestGreen,
+        backgroundColor: isDark ? const Color(0xFF1E293B) : darkForestGreen,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // 🌙/☀️ Ícono Botón Modo Oscuro / Claro
+          IconButton(
+            icon: Icon(
+              isDark ? Icons.light_mode_rounded : Icons.dark_mode_outlined,
+              size: 22,
+            ),
+            tooltip: isDark ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro',
+            onPressed: () {
+              themeProvider.toggleTheme(!isDark);
+            },
+          ),
+
+          // 📄 Botón Exportar PDF
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined, size: 22),
+            tooltip: 'Exportar PDF',
+            onPressed: () async {
+              final productos = await _futureProductos;
+              if (mounted) {
+                if (productos.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('No hay productos para exportar'),
+                      backgroundColor: Colors.orangeAccent,
+                    ),
+                  );
+                  return;
+                }
+                PdfExportService.exportarProductosPdf(context, productos);
+              }
+            },
+          ),
+
+          // 🔄 Botón Recargar
           IconButton(
             icon: const Icon(Icons.refresh_rounded, size: 22),
             onPressed: _cargarProductos,
@@ -143,7 +205,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
           ),
         ],
       ),
-      drawer: _buildDrawer(),
+      drawer: _buildDrawer(isDark),
       body: FutureBuilder<List<Producto>>(
         future: _futureProductos,
         builder: (context, snapshot) {
@@ -159,7 +221,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 children: [
                   Icon(Icons.error_outline_rounded, size: 44, color: Colors.red.shade300),
                   const SizedBox(height: 12),
-                  Text('Error al cargar inventario', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
+                  Text('Error al cargar inventario', style: TextStyle(color: mutedText, fontWeight: FontWeight.w600)),
                 ],
               ),
             );
@@ -174,18 +236,21 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: const BoxDecoration(color: softGreenBg, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF064E3B) : softGreenBg,
+                      shape: BoxShape.circle,
+                    ),
                     child: const Icon(Icons.inventory_2_outlined, size: 48, color: darkForestGreen),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Sin productos registrados',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: slateDark),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: primaryText),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Toca el botón "+ Nuevo" para comenzar',
-                    style: TextStyle(color: slateMuted, fontSize: 13),
+                    style: TextStyle(color: mutedText, fontSize: 13),
                   ),
                 ],
               ),
@@ -212,26 +277,26 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Destacados',
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.bold,
-                                color: slateDark,
+                                color: primaryText,
                                 letterSpacing: 0.2,
                               ),
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color: softGreenBg,
+                                color: isDark ? const Color(0xFF064E3B) : softGreenBg,
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: darkForestGreen.withOpacity(0.2)),
+                                border: Border.all(color: darkForestGreen.withOpacity(0.3)),
                               ),
                               child: Text(
                                 '${productos.length} items',
-                                style: const TextStyle(
-                                  color: darkForestGreen,
+                                style: TextStyle(
+                                  color: isDark ? accentMint : darkForestGreen,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 11,
                                 ),
@@ -269,7 +334,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                             width: isSelected ? 18 : 6,
                             height: 6,
                             decoration: BoxDecoration(
-                              color: isSelected ? darkForestGreen : Colors.black54,
+                              color: isSelected ? darkForestGreen : (isDark ? Colors.white24 : Colors.black54),
                               borderRadius: BorderRadius.circular(10),
                             ),
                           );
@@ -277,14 +342,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 20.0),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
                         child: Text(
                           'Catálogo General',
                           style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.bold,
-                            color: slateDark,
+                            color: primaryText,
                             letterSpacing: 0.2,
                           ),
                         ),
@@ -300,7 +365,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildProductoCard(productos[index]),
+                        (context, index) => _buildProductoCard(productos[index], isDark),
                     childCount: productos.length,
                   ),
                 ),
@@ -332,7 +397,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -360,7 +425,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                     colors: [
                       Colors.transparent,
                       Colors.black.withOpacity(0.2),
-                      Colors.black.withOpacity(0.75),
+                      Colors.black.withOpacity(0.85),
                     ],
                     stops: const [0.4, 0.7, 1.0],
                   ),
@@ -466,17 +531,23 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  // Tarjeta de Producto Limpia y Organizada
-  Widget _buildProductoCard(Producto prod) {
+  // Tarjeta de Producto Adaptativa
+  Widget _buildProductoCard(Producto prod, bool isDark) {
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final primaryText = isDark ? Colors.white : slateDark;
+    final mutedText = isDark ? const Color(0xFF94A3B8) : slateMuted;
+    final borderColor = isDark ? const Color(0xFF334155) : borderLight;
+    final tagBg = isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardBg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderLight),
+        border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.blueAccent.withOpacity(0.02),
+            color: Colors.black.withOpacity(0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -495,9 +566,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
                 width: 68,
                 height: 68,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildFallbackImage(),
+                errorBuilder: (_, __, ___) => _buildFallbackImage(isDark),
               )
-                  : _buildFallbackImage(),
+                  : _buildFallbackImage(isDark),
             ),
             const SizedBox(width: 12),
 
@@ -506,47 +577,47 @@ class _ProductosScreenState extends State<ProductosScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Categoría y Marca Pills
                   Row(
                     children: [
-                      _buildTag(prod.categoriaNombre, const Color(0xFFF1F5F9), slateMuted),
+                      _buildTag(prod.categoriaNombre, tagBg, mutedText),
                       const SizedBox(width: 4),
-                      _buildTag(prod.marcaNombre, softGreenBg, darkForestGreen),
+                      _buildTag(
+                        prod.marcaNombre,
+                        isDark ? const Color(0xFF064E3B) : softGreenBg,
+                        isDark ? accentMint : darkForestGreen,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
 
-                  // Nombre del Producto
                   Text(
                     prod.nombre,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 15,
-                      color: slateDark,
+                      color: primaryText,
                     ),
                   ),
                   const SizedBox(height: 2),
 
-                  // SKU + Stock
                   Row(
                     children: [
                       Text(
                         'SKU: ${prod.sku}',
-                        style: const TextStyle(color: slateMuted, fontSize: 11, fontWeight: FontWeight.w500),
+                        style: TextStyle(color: mutedText, fontSize: 11, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 8),
-                      _buildStockBadge(prod.stock),
+                      _buildStockBadge(prod.stock, isDark),
                     ],
                   ),
                   const SizedBox(height: 4),
 
-                  // Precio
                   Text(
                     '\$${prod.precio.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      color: darkForestGreen,
+                    style: TextStyle(
+                      color: isDark ? accentMint : darkForestGreen,
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
                     ),
@@ -579,11 +650,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  Widget _buildFallbackImage() {
+  Widget _buildFallbackImage(bool isDark) {
     return Container(
       width: 68,
       height: 68,
-      color: softGreenBg,
+      color: isDark ? const Color(0xFF064E3B) : softGreenBg,
       child: const Icon(Icons.inventory_2_outlined, color: darkForestGreen, size: 28),
     );
   }
@@ -602,10 +673,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  Widget _buildStockBadge(int stock) {
+  Widget _buildStockBadge(int stock, bool isDark) {
     final bool hasStock = stock > 0;
-    final Color badgeBg = hasStock ? softGreenBg : const Color(0xFFFEF2F2);
-    final Color textColor = hasStock ? darkForestGreen : Colors.redAccent;
+    final Color badgeBg = hasStock
+        ? (isDark ? const Color(0xFF064E3B) : softGreenBg)
+        : (isDark ? const Color(0xFF451A1A) : const Color(0xFFFEF2F2));
+    final Color textColor = hasStock
+        ? (isDark ? accentMint : darkForestGreen)
+        : Colors.redAccent;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -620,8 +695,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  Widget _buildDrawer() {
+  Widget _buildDrawer(bool isDark) {
     return Drawer(
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       child: Column(
         children: [
           UserAccountsDrawerHeader(
@@ -638,7 +714,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             ),
             accountEmail: const Text(
               'Panel Administrativo',
-              style: TextStyle(color: Color(0xFF6EE7B7), fontSize: 12),
+              style: TextStyle(color: accentMint, fontSize: 12),
             ),
             currentAccountPicture: CircleAvatar(
               backgroundColor: Colors.white.withOpacity(0.15),
@@ -649,7 +725,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             leading: const Icon(Icons.inventory_2_outlined, color: darkForestGreen),
             title: const Text('Productos', style: TextStyle(fontWeight: FontWeight.bold)),
             selected: true,
-            selectedTileColor: softGreenBg,
+            selectedTileColor: isDark ? const Color(0xFF064E3B) : softGreenBg,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             onTap: () => Navigator.pop(context),
           ),
@@ -667,6 +743,18 @@ class _ProductosScreenState extends State<ProductosScreen> {
             onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (context) => const MarcasScreen()));
+            },
+          ),
+          const Divider(indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.settings_outlined, color: darkForestGreen),
+            title: const Text('Configuración'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ConfiguracionesScreen()),
+              );
             },
           ),
         ],

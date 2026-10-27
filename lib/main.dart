@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'features/auth/screens/welcome_screen.dart';
+import 'config/theme_provider.dart';
+import 'features/productos/screens/productos_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,24 +11,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Gestión de Inventario',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-          elevation: 2,
-        ),
-      ),
-      // Inicia con la pantalla Hero de Bienvenida
-      home: const WelcomeScreen(),
+    return ListenableBuilder(
+      listenable: themeProvider,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Gestión de Productos',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeProvider.lightTheme,
+          darkTheme: ThemeProvider.darkTheme,
+          themeMode: themeProvider.themeMode,
+          home: const ProductosScreen(),
+        );
+      },
     );
   }
 }
